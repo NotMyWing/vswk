@@ -134,7 +134,7 @@ internal static class GripSweep {
 
 	internal sealed class Candidates {
 		private List<(BlockEdge Edge, (double Min, double Max) Span, CollisionBox? Ceiling)> edges = new(), visible = new();
-		private readonly List<CollisionBox> leaves = new();
+		private readonly List<CollisionBox> surfaces = new();
 		private readonly List<GripSegment> shafts = new();
 		private readonly List<(WindmillGrip.SweepPose Pose, SailShape.Face Face)> sails = new();
 		private readonly List<(double Min, double Max)> spans = new();
@@ -147,13 +147,13 @@ internal static class GripSweep {
 		private double specialMovement;
 		private bool fixedEye;
 		private int misses, specialMisses;
-		public bool Any => this.edges.Count > 0 || this.leaves.Count > 0 || this.shafts.Count > 0 || this.sails.Count > 0;
+		public bool Any => this.edges.Count > 0 || this.surfaces.Count > 0 || this.shafts.Count > 0 || this.sails.Count > 0;
 
 		public void Clear() {
 			this.edges.Clear();
 			this.visible.Clear();
 			this.boxes.Clear();
-			this.leaves.Clear();
+			this.surfaces.Clear();
 			this.sails.Clear();
 			this.shafts.Clear();
 			this.walls = null;
@@ -161,7 +161,7 @@ internal static class GripSweep {
 
 		public void Gather(EntityPlayer player, GripRay ray, Vec3d startEye, Vec3d endEye, double movement, double angle) {
 			this.edges.Clear();
-			this.leaves.Clear();
+			this.surfaces.Clear();
 			this.shafts.Clear();
 			this.sails.Clear();
 			this.misses = this.specialMisses = 0;
@@ -200,7 +200,7 @@ internal static class GripSweep {
 			foreach (var box in this.boxes) {
 				if (box.Y2 < floor - GripSweep.Roundoff) continue;
 				if (box.Block is BlockSupportBeam || box.Block.BlockMaterial is EnumBlockMaterial.Ice or EnumBlockMaterial.Snow) continue;
-				if (box.Block.BlockMaterial == EnumBlockMaterial.Leaves) this.leaves.Add(box);
+				if (box.GrippableSurface) this.surfaces.Add(box);
 				foreach (var face in BlockFacing.HORIZONTALS) {
 					Add(new BlockEdge(box, face, underside: false), null);
 					if (box.CanGripUnderside) Add(new BlockEdge(box, face, underside: true), box);
@@ -227,17 +227,17 @@ internal static class GripSweep {
 			if (++this.misses != GripSweep.ExactMissesBeforeTerrainTrim) return;
 			var walls = this.walls ??= BlockEdge.SolidWalls(this.boxes);
 			Span<Vector3> corners = stackalloc Vector3[8];
-			for (int i = this.leaves.Count - 1; i >= 0; i--) {
-				var leaf = this.leaves[i];
+			for (int i = this.surfaces.Count - 1; i >= 0; i--) {
+				var surface = this.surfaces[i];
 				int corner = 0;
 				for (int x = 0; x < 2; x++)
 				for (int y = 0; y < 2; y++)
 				for (int z = 0; z < 2; z++) {
 					var eye = this.specialRay.Eye;
-					corners[corner++] = new Vector3((float)((x == 0 ? leaf.X1 : leaf.X2) - eye.X),
-						(float)((y == 0 ? leaf.Y1 : leaf.Y2) - eye.Y), (float)((z == 0 ? leaf.Z1 : leaf.Z2) - eye.Z));
+					corners[corner++] = new Vector3((float)((x == 0 ? surface.X1 : surface.X2) - eye.X),
+						(float)((y == 0 ? surface.Y1 : surface.Y2) - eye.Y), (float)((z == 0 ? surface.Z1 : surface.Z2) - eye.Z));
 				}
-				if (this.Hidden(corners)) this.leaves.RemoveAt(i);
+				if (this.Hidden(corners)) this.surfaces.RemoveAt(i);
 			}
 
 			this.visible.Clear();
@@ -341,10 +341,10 @@ internal static class GripSweep {
 				if (GripSweep.CanAim(ray, edge, span, ceiling.HasValue, movement, angle)) return true;
 			}
 
-			if (this.leaves.Count == 0) return false;
+			if (this.surfaces.Count == 0) return false;
 			var end = this.RayEnd(ray, angle);
 			double pad = movement + (ray.Range + ray.EyeHeight) * angle + GripSweep.Roundoff;
-			foreach (var box in this.leaves) {
+			foreach (var box in this.surfaces) {
 				if (box.Y2 < ray.Eye.Y - ray.EyeHeight - 0.05 - movement - GripSweep.Roundoff) continue;
 				if (box.X2 >= Math.Min(ray.Eye.X, end.X) - pad && box.X1 <= Math.Max(ray.Eye.X, end.X) + pad &&
 					box.Y2 >= Math.Min(ray.Eye.Y, end.Y) - pad && box.Y1 <= Math.Max(ray.Eye.Y, end.Y) + pad &&
@@ -362,10 +362,10 @@ internal static class GripSweep {
 				if (GripAim.TryEdge(ray, edge, span, aimedAtFace, out var contact) &&
 					(!this.fixedEye || this.search.MaySee(edge, contact, ray.Eye))) return true;
 			}
-			if (this.leaves.Count == 0) return false;
+			if (this.surfaces.Count == 0) return false;
 			end ??= this.RayEnd(ray, 0);
-			foreach (var box in this.leaves) {
-				if (box.Y2 < floor || !LeafGrip.Intersects(box, ray.Eye, end, out double at)) continue;
+			foreach (var box in this.surfaces) {
+				if (box.Y2 < floor || !SurfaceGrip.Intersects(box, ray.Eye, end, out double at)) continue;
 				var hit = ray.Eye.AddCopy((end.X - ray.Eye.X) * at, (end.Y - ray.Eye.Y) * at, (end.Z - ray.Eye.Z) * at);
 				if (hit.Y < floor || !float.IsFinite(ray.Score(GripSegment.Offset(hit, ray.Eye)))) continue;
 				bool blocked = false;
@@ -375,7 +375,7 @@ internal static class GripSweep {
 					break;
 				}
 				if (blocked) continue;
-				var face = LeafGrip.Face(this.search.Player, box, ray.Eye, hit);
+				var face = SurfaceGrip.Face(this.search.Player, box, ray.Eye, hit);
 				if (!LedgeFinder.EntityBlocksGrip(this.search.Player, ray.Eye, hit, face.Normali.X, face.Normali.Z)) return true;
 			}
 			return false;

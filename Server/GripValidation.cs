@@ -48,18 +48,18 @@ internal static class GripValidation {
 		foreach (var part in parts) {
 			if (part.X1 >= part.X2 || part.Y1 >= part.Y2 || part.Z1 >= part.Z2) continue;
 			var box = new CollisionBox(pos.X, pos.Y, pos.Z, block, part, selectionOnly);
-			bool leafFace = block.BlockMaterial == EnumBlockMaterial.Leaves && box.OnSurface(target, tolerance);
+			bool onSurface = box.GrippableSurface && box.OnSurface(target, tolerance);
 			bool onEdge = box.EdgeAt(face, target, out var edge);
-			if (!leafFace && !onEdge) continue;
+			if (!onSurface && !onEdge) continue;
 
 			waitForPosition = true;
 			neighbors ??= LedgeFinder.FindGripBoxes(world, pos.dimension, eye, target);
-			var leaf = !leafFace ? null : selectionOnly ? LeafGrip.Contact(player, box, eye, target, neighbors) :
-				LeafGrip.Find(player, box, eye, target, neighbors);
-			if (leaf != null &&
-				target.SquareDistanceTo(leaf.HitX, leaf.Top, leaf.HitZ) <= tolerance * tolerance) {
+			var surface = !onSurface ? null : selectionOnly ? SurfaceGrip.Contact(player, box, eye, target, neighbors) :
+				SurfaceGrip.Find(player, box, eye, target, neighbors);
+			if (surface != null &&
+				target.SquareDistanceTo(surface.HitX, surface.Top, surface.HitZ) <= tolerance * tolerance) {
 				waitForPosition = false;
-				return leaf with { CollapseDelay = BlockCollapse.Delay(player.World, block) };
+				return surface with { CollapseDelay = BlockCollapse.Delay(player.World, block) };
 			}
 			if (!onEdge) continue;
 

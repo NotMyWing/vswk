@@ -47,7 +47,7 @@ internal sealed record Ledge(int X, int Y, int Z, int Dimension, int BlockId,
 		foreach (var part in parts) {
 			if (part.X1 >= part.X2 || part.Y1 >= part.Y2 || part.Z1 >= part.Z2) continue;
 			var box = new CollisionBox(this.X, this.Y, this.Z, block, part, selectionOnly);
-			if (block.BlockMaterial == EnumBlockMaterial.Leaves && box.OnSurface(point, CollisionBox.ContactTolerance)) return true;
+			if (box.GrippableSurface && box.OnSurface(point, CollisionBox.ContactTolerance)) return true;
 			if (box.EdgeAt(face, point, out _)) return true;
 		}
 		return false;

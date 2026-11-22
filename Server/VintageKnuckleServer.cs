@@ -17,6 +17,7 @@ public sealed class VintageKnuckleServer : ModSystem {
 		this.api = api;
 		this.harmony = new Harmony("vintageknuckle.catchimpact");
 		CatchImpact.Patch(this.harmony);
+		LadderMovement.Patch(this.harmony);
 		GripSlots.Patch(this.harmony, new HarmonyMethod(typeof(VintageKnuckleServer), nameof(VintageKnuckleServer.CheckHandSlot)));
 		BeamGrip.PatchIndex(this.harmony, EnumAppSide.Server);
 		this.harmony.Patch(AccessTools.Method(typeof(EntityProjectileBase), nameof(EntityProjectileBase.CanCollect)),
@@ -55,7 +56,7 @@ public sealed class VintageKnuckleServer : ModSystem {
 		if (__instance.Api.ModLoader.GetModSystem<VintageKnuckleServer>().InStance(byEntity)) __result = false;
 	}
 
-	private bool InStance(Entity collector) => collector is EntityPlayer { PlayerUID: { } uid } &&
+	internal bool InStance(Entity collector) => collector is EntityPlayer { PlayerUID: { } uid } &&
 		this.climbers.TryGetValue(uid, out var climber) && climber.Stance;
 
 	private bool HoldingSpear(long id) {

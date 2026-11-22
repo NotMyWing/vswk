@@ -1,11 +1,13 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace VintageKnuckle;
 
 internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, Cuboidf Part, bool SelectionOnly = false) {
 	public const double ContactTolerance = 0.0001;
-	public bool CanGripUnderside => (!this.SelectionOnly || CollisionBox.IsLightFixture(this.Block)) && !this.Block.SideSolid[BlockFacing.DOWN.Index] &&
+	public bool GrippableSurface => this.Block.Climbable || this.Block.Class == "BlockToolRack" || this.Block.BlockMaterial == EnumBlockMaterial.Leaves;
+	public bool CanGripUnderside => (!this.SelectionOnly || CollisionBox.UsesSelectionBox(this.Block)) && !this.Block.SideSolid[BlockFacing.DOWN.Index] &&
 		(this.Part.X1 > CollisionBox.ContactTolerance || this.Part.Y1 > CollisionBox.ContactTolerance || this.Part.Z1 > CollisionBox.ContactTolerance ||
 		 this.Part.X2 < 1 - CollisionBox.ContactTolerance || this.Part.Y2 < 1 - CollisionBox.ContactTolerance || this.Part.Z2 < 1 - CollisionBox.ContactTolerance);
 	public double X1 => this.X + (double)this.Part.X1;
@@ -15,11 +17,16 @@ internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, C
 	public double Z1 => this.Z + (double)this.Part.Z1;
 	public double Z2 => this.Z + (double)this.Part.Z2;
 
-	private static bool IsLightFixture(Block block) => block.Class is "BlockOilLamp" or "BlockTorch" or "BlockTorchHolder";
+	private static bool UsesSelectionBox(Block block) => block.Class is "BlockOilLamp" or "BlockTorch" or "BlockTorchHolder" or "BlockToolRack";
 
 	public static Cuboidf[]? Parts(Block block, IBlockAccessor world, BlockPos pos, out bool selectionOnly) {
+		if (block is BlockSnowLayer) {
+			selectionOnly = false;
+			return null;
+		}
+
 		var parts = block.GetCollisionBoxes(world, pos);
-		selectionOnly = parts is not { Length: > 0 } && (block.BlockMaterial == EnumBlockMaterial.Leaves || CollisionBox.IsLightFixture(block));
+		selectionOnly = parts is not { Length: > 0 } && (block.BlockMaterial == EnumBlockMaterial.Leaves || CollisionBox.UsesSelectionBox(block));
 		return selectionOnly ? block.GetSelectionBoxes(world, pos) : parts;
 	}
 

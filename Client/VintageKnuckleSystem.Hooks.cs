@@ -12,8 +12,11 @@ using Vintagestory.GameContent;
 namespace VintageKnuckle;
 
 public sealed partial class VintageKnuckleSystem {
+	internal static bool InStance(Entity player) => VintageKnuckleSystem.active is { stance: true } mod && player == mod.api.World.Player?.Entity;
+
 	private void PatchClient(Harmony harmony) {
 		FirstPersonArms.Patch(harmony, this.api);
+		LadderMovement.Patch(harmony);
 		GripSlots.Patch(harmony, new HarmonyMethod(typeof(VintageKnuckleSystem), nameof(VintageKnuckleSystem.CheckHandSlot)));
 		harmony.Patch(AccessTools.DeclaredMethod(typeof(EntityShapeRenderer), nameof(EntityShapeRenderer.DoRender3DOpaqueBatched)),
 			transpiler: new HarmonyMethod(typeof(VintageKnuckleSystem), nameof(VintageKnuckleSystem.PoseGrips)));

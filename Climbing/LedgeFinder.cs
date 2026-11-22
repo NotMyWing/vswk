@@ -52,12 +52,12 @@ internal static class LedgeFinder {
 			if (box.Block is BlockSupportBeam) continue;
 			if (box.Y2 < feet.Y - 0.05 || box.Block.BlockMaterial is EnumBlockMaterial.Ice or EnumBlockMaterial.Snow) continue;
 
-			var leaf = LeafGrip.Find(player, box, eye, end, boxes);
-			if (leaf != null && leaf.Top >= feet.Y - 0.05) {
-				var point = new Vector3((float)(leaf.HitX - eye.X), (float)(leaf.Top - eye.Y), (float)(leaf.HitZ - eye.Z));
+			var surface = SurfaceGrip.Find(player, box, eye, end, boxes);
+			if (surface != null && surface.Top >= feet.Y - 0.05) {
+				var point = new Vector3((float)(surface.HitX - eye.X), (float)(surface.Top - eye.Y), (float)(surface.HitZ - eye.Z));
 				float score = ray.Score(point);
 				if (score < bestScore) {
-					grip = leaf;
+					grip = surface;
 					bestScore = score;
 				}
 			}
