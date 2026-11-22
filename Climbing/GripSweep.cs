@@ -53,7 +53,7 @@ internal static class GripSweep {
 		double displacement = travel + reach * angleTravel;
 		if (!double.IsFinite(displacement)) return null;
 
-		using var owned = GripSearch.For(player) is not { InRay: false } ? LedgeFinder.BeginSweep(player) : null;
+		using var owned = GripSearch.For(player) is not { InRay: false } ? GripSearch.Open(player, cacheShapes: true) : null;
 		var search = GripSearch.For(player)!;
 		search.CacheSight(travel == 0 ? path.Start.AddCopy(player.LocalEyePos) : null);
 		var feet = new Vec3d();

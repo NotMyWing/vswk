@@ -6,11 +6,6 @@ using Vintagestory.GameContent;
 
 namespace VintageKnuckle;
 
-internal readonly record struct GripRay(Vec3d Eye, Vector3 Look, float EyeHeight, float Range) {
-	public float Length => this.Range + (this.Look.Y < 0 ? this.EyeHeight : 0);
-	public float Score(Vector3 fromEye) => GripAim.PointScore(fromEye, this.Look, this.EyeHeight, this.Range);
-}
-
 internal static class LedgeFinder {
 	public static Vec3d Feet(EntityPos pos) => new(pos.X, pos.Y, pos.Z);
 
@@ -18,14 +13,6 @@ internal static class LedgeFinder {
 		var height = player.Properties?.EyeHeight ?? 0;
 		return height > 0 ? (float)(height / 1.7) : 1f;
 	}
-
-	public static Ledge? FindAlongTurn(EntityPlayer player, Vector2 start, Vector2 end, Vec3d feet) =>
-		GripSweep.Turn(player, start, end, feet);
-
-	public static Ledge? FindAlongStep(EntityPlayer player, Vec3f view, Vec3d start, Vec3d end, bool includeStart = true) =>
-		GripSweep.Step(player, view, start, end, includeStart);
-
-	public static GripSearch BeginSweep(EntityPlayer player) => GripSearch.Open(player, cacheShapes: true);
 
 	public static Ledge? FindAt(EntityPlayer player, Vec3f view, Vec3d feet, float sailStep = 0) =>
 		LedgeFinder.FindAt(player, view, feet, sailStep, specialOnly: false);

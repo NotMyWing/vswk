@@ -21,7 +21,7 @@ internal sealed class Climber {
 	public GripState? LastSent;
 	private bool hungry;
 	private readonly BlockPos footing = new(0);
-	private readonly Action<Climber>? beforeJump;
+	private readonly Action<Climber> beforeJump;
 	private readonly Queue<long> jumpKeys = new(), gripJumps = new();
 
 	public int InputGraceMs {
@@ -49,7 +49,7 @@ internal sealed class Climber {
 		return slot is { Empty: true };
 	}
 
-	public Climber(IServerPlayer owner, Action<Climber>? beforeJump = null) {
+	public Climber(IServerPlayer owner, Action<Climber> beforeJump) {
 		this.beforeJump = beforeJump;
 		this.Owner = owner;
 		this.Left = new Hand(GripPoint.LeftKey, this.Stamina.Left);
@@ -176,7 +176,7 @@ internal sealed class Climber {
 		if (Climber.MatchJump(this.gripJumps, now)) return;
 		if (!this.Holding && this.Left.Waiting == null && this.Right.Waiting == null) return;
 
-		this.beforeJump?.Invoke(this);
+		this.beforeJump(this);
 		this.RememberJump(this.jumpKeys, now);
 		Schedule(this.Left);
 		Schedule(this.Right);

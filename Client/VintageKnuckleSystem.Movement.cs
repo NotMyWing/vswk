@@ -24,8 +24,8 @@ public sealed partial class VintageKnuckleSystem {
 		if (!left && !right) return;
 
 		var feet = LedgeFinder.Feet(entity.Pos);
-		using var search = LedgeFinder.BeginSweep(entity);
-		var lip = LedgeFinder.FindAlongTurn(entity, previousAim, currentAim, feet);
+		using var search = GripSearch.Open(entity, cacheShapes: true);
+		var lip = GripSweep.Turn(entity, previousAim, currentAim, feet);
 		this.ReachForGrips(left, right, lip);
 		this.ShowReach(entity, lip != null && this.HasFreeHand(entity) && LedgeFinder.FindAt(entity, this.View(), feet) != null);
 		this.checkedAim = true;
@@ -154,8 +154,8 @@ public sealed partial class VintageKnuckleSystem {
 		bool continuous = this.stepDimension == pos.Dimension && this.stepPositionVersion == player.WatchedAttributes.GetInt("positionVersionNumber") &&
 			traveled <= allowance * allowance;
 
-		using var search = LedgeFinder.BeginSweep(player);
-		var lip = continuous ? LedgeFinder.FindAlongStep(player, this.stepView, this.stepStart, end, includeStart: false)
+		using var search = GripSearch.Open(player, cacheShapes: true);
+		var lip = continuous ? GripSweep.Step(player, this.stepView, this.stepStart, end, includeStart: false)
 			: LedgeFinder.FindAt(player, this.stepView, end);
 		if (lip?.CaughtFrom is { } caughtFrom && WindmillGrip.Resolve(player.World, lip, out var carry) is { } anchor &&
 			((player.OnGround && caughtFrom.Y > end.Y && this.stepMotion.Y < 0) || !LedgeFinder.InReach(player, anchor.Position, 0.6))) {

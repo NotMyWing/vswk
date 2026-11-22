@@ -34,7 +34,7 @@ public sealed class VintageKnuckleServer : ModSystem {
 		api.Event.PlayerNowPlaying += this.Join;
 		api.Event.PlayerDisconnect += this.Disconnect;
 		api.Event.PlayerDeath += this.Died;
-		api.Event.PlayerDimensionChanged += this.ChangedDimension;
+		api.Event.PlayerDimensionChanged += this.Stop;
 		api.Event.HandInteract += this.UseHand;
 		api.Event.BreakBlock += this.BreakBlock;
 		api.Event.BeforeActiveSlotChanged += this.ChangeHotbarSlot;
@@ -462,7 +462,6 @@ public sealed class VintageKnuckleServer : ModSystem {
 		this.SendState(climber, left, right);
 	}
 
-	private void ChangedDimension(IPlayer player) => this.Stop(player);
 	private void Died(IServerPlayer player, DamageSource source) => this.Stop(player);
 
 	private void SavePlayers() {
@@ -475,7 +474,7 @@ public sealed class VintageKnuckleServer : ModSystem {
 		this.api.Event.PlayerNowPlaying -= this.Join;
 		this.api.Event.PlayerDisconnect -= this.Disconnect;
 		this.api.Event.PlayerDeath -= this.Died;
-		this.api.Event.PlayerDimensionChanged -= this.ChangedDimension;
+		this.api.Event.PlayerDimensionChanged -= this.Stop;
 		this.api.Event.HandInteract -= this.UseHand;
 		this.api.Event.BreakBlock -= this.BreakBlock;
 		this.api.Event.BeforeActiveSlotChanged -= this.ChangeHotbarSlot;
