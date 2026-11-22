@@ -118,6 +118,10 @@ public sealed partial class VintageKnuckleSystem : ModSystem {
 			}
 			return;
 		}
+		if (e.Button is EnumMouseButton.Left or EnumMouseButton.Right && this.TryUseDoor(e.Button)) {
+			e.Handled = true;
+			return;
+		}
 		if (e.Button == EnumMouseButton.Left) {
 			this.swallowLeftUp = true;
 			e.Handled = true;
@@ -142,6 +146,34 @@ public sealed partial class VintageKnuckleSystem : ModSystem {
 			this.PressHand(this.right);
 		}
 		e.Handled = true;
+	}
+
+	private bool TryUseDoor(EnumMouseButton button) {
+		var world = this.api.World;
+		var player = world.Player;
+		if (player.CurrentEntitySelection != null || player.CurrentBlockSelection is not { } selection) return false;
+
+		var block = selection.Block ?? world.BlockAccessor.GetBlock(selection.Position);
+		var door = block is BlockMultiblock part ? world.BlockAccessor.GetBlock(selection.Position.AddCopy(part.OffsetInv)) : block;
+		if (door is not (BlockBaseDoor or BlockFenceGate or BlockFenceGateRoughHewn or BlockCokeOvenDoor) &&
+			!door.HasBehavior<BlockBehaviorDoor>() && !door.HasBehavior<BlockBehaviorTrapDoor>() &&
+			!door.HasBehavior<BlockBehaviorJonasBoilerDoor>()) return false;
+
+		ref bool pressed = ref (button == EnumMouseButton.Left ? ref this.swallowLeftUp : ref this.swallowRightUp);
+		if (pressed) return true;
+		pressed = true;
+		if (player.WorldData.CurrentGameMode == EnumGameMode.Spectator ||
+			!world.Claims.TryAccess(player, selection.Position, EnumBlockAccessFlags.Use)) return true;
+
+		if (block.OnBlockInteractStart(world, player, selection)) {
+			this.api.Network.SendPlayerPositionPacket();
+			this.api.Network.SendHandInteraction((int)EnumMouseButton.Right, selection, null, EnumHandInteract.BlockInteract,
+				(int)EnumHandInteractNw.StartBlockUse, false, default);
+			block.OnBlockInteractStop(0, world, player, selection);
+			this.api.Network.SendHandInteraction((int)EnumMouseButton.Right, selection, null, EnumHandInteract.BlockInteract,
+				(int)EnumHandInteractNw.StopBlockUse, false, default);
+		}
+		return true;
 	}
 
 	private void PressHand(Grip hand) {
