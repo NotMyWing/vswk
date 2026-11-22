@@ -63,7 +63,7 @@ internal static class LedgeFinder {
 			}
 
 			FindEdges(box, underside: false);
-			if (!box.SelectionOnly && box.Y1 >= feet.Y - 0.05) FindEdges(box, underside: true);
+			if (box.CanGripUnderside && box.Y1 >= feet.Y - 0.05) FindEdges(box, underside: true);
 		}
 
 		var nearby = NearbyGrips.Find(player, ray);

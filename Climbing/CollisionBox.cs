@@ -5,6 +5,9 @@ namespace VintageKnuckle;
 
 internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, Cuboidf Part, bool SelectionOnly = false) {
 	public const double ContactTolerance = 0.0001;
+	public bool CanGripUnderside => (!this.SelectionOnly || CollisionBox.IsLightFixture(this.Block)) && !this.Block.SideSolid[BlockFacing.DOWN.Index] &&
+		(this.Part.X1 > CollisionBox.ContactTolerance || this.Part.Y1 > CollisionBox.ContactTolerance || this.Part.Z1 > CollisionBox.ContactTolerance ||
+		 this.Part.X2 < 1 - CollisionBox.ContactTolerance || this.Part.Y2 < 1 - CollisionBox.ContactTolerance || this.Part.Z2 < 1 - CollisionBox.ContactTolerance);
 	public double X1 => this.X + (double)this.Part.X1;
 	public double X2 => this.X + (double)this.Part.X2;
 	public double Y1 => this.Y + (double)this.Part.Y1;
@@ -12,16 +15,18 @@ internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, C
 	public double Z1 => this.Z + (double)this.Part.Z1;
 	public double Z2 => this.Z + (double)this.Part.Z2;
 
+	private static bool IsLightFixture(Block block) => block.Class is "BlockOilLamp" or "BlockTorch" or "BlockTorchHolder";
+
 	public static Cuboidf[]? Parts(Block block, IBlockAccessor world, BlockPos pos, out bool selectionOnly) {
 		var parts = block.GetCollisionBoxes(world, pos);
-		selectionOnly = block.BlockMaterial == EnumBlockMaterial.Leaves && parts is not { Length: > 0 };
+		selectionOnly = parts is not { Length: > 0 } && (block.BlockMaterial == EnumBlockMaterial.Leaves || CollisionBox.IsLightFixture(block));
 		return selectionOnly ? block.GetSelectionBoxes(world, pos) : parts;
 	}
 
 	public bool EdgeAt(BlockFacing face, Vec3d point, out BlockEdge edge) {
 		bool underside = Math.Abs(this.Y1 - point.Y) < Math.Abs(this.Y2 - point.Y);
 		edge = new BlockEdge(this, face, underside);
-		if (underside && this.SelectionOnly) return false;
+		if (underside && !this.CanGripUnderside) return false;
 
 		double along = face.Normali.X == 0 ? point.X : point.Z;
 		var (x, z) = edge.PointAt(along);

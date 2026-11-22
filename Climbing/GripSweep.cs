@@ -203,7 +203,7 @@ internal static class GripSweep {
 				if (box.Block.BlockMaterial == EnumBlockMaterial.Leaves) this.leaves.Add(box);
 				foreach (var face in BlockFacing.HORIZONTALS) {
 					Add(new BlockEdge(box, face, underside: false), null);
-					if (!box.SelectionOnly) Add(new BlockEdge(box, face, underside: true), box);
+					if (box.CanGripUnderside) Add(new BlockEdge(box, face, underside: true), box);
 				}
 			}
 
