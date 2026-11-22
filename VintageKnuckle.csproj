@@ -34,7 +34,7 @@
 	<Target Name="PackMod" AfterTargets="Build">
 		<RemoveDir Directories="$(IntermediateOutputPath)mod" />
 		<MakeDir Directories="$(IntermediateOutputPath)mod;dist" />
-		<Copy SourceFiles="@(IntermediateAssembly);modinfo.json;LICENSE;THIRD_PARTY_NOTICES.md" DestinationFolder="$(IntermediateOutputPath)mod" />
+		<Copy SourceFiles="@(IntermediateAssembly);modinfo.json;modicon.png;LICENSE;THIRD_PARTY_NOTICES.md" DestinationFolder="$(IntermediateOutputPath)mod" />
 		<Copy SourceFiles="@(ModAsset)" DestinationFiles="@(ModAsset->'$(IntermediateOutputPath)mod/%(Identity)')" />
 		<ZipDirectory SourceDirectory="$(IntermediateOutputPath)mod" DestinationFile="dist/vintageknuckle-$(Version).zip" Overwrite="true" />
 	</Target>
