@@ -80,25 +80,25 @@ public sealed partial class VintageKnuckleSystem {
 		if (VintageKnuckleSystem.active is not { stance: true } mod || thrower is not EntityPlayer player ||
 			player != mod.api.World.Player.Entity || !SpearGrip.IsSpear(projectile)) return;
 
-		const float recoilFraction = 0.1f;
+		const float recoilFraction = 0.26f;
 		var flight = projectile.Pos.Motion;
 		var kick = new Vector3((float)flight.X, (float)flight.Y, (float)flight.Z) * -recoilFraction;
 		player.Pos.Motion.Add(kick.X, kick.Y, kick.Z);
 
 		float scale = LedgeFinder.ModelScale(player);
-		void CheckGrip(Grip hand) {
-			if (WindmillGrip.Resolve(player.World, hand.Hold, out _) is not { } lip || lip.Dimension != player.Pos.Dimension) return;
-
-			var arm = VintageKnuckleSystem.FromLip(LedgeFinder.Feet(player.Pos), lip, scale);
-			if (!ClimbMotion.RecoilBreaksGrip(kick * ClimbMotion.PhysicsTicksPerSecond, arm)) return;
-
-			hand.LoseSupport();
-			mod.PlaySlip(lip, player.Pos.Dimension);
-		}
-
-		CheckGrip(mod.left);
-		CheckGrip(mod.right);
+		mod.CheckRecoilGrip(mod.left, player, scale, kick);
+		mod.CheckRecoilGrip(mod.right, player, scale, kick);
 		mod.SyncGrips();
+	}
+
+	private void CheckRecoilGrip(Grip hand, EntityPlayer player, float scale, Vector3 kick) {
+		if (WindmillGrip.Resolve(player.World, hand.Hold, out _) is not { } lip || lip.Dimension != player.Pos.Dimension) return;
+
+		var arm = VintageKnuckleSystem.FromLip(LedgeFinder.Feet(player.Pos), lip, scale);
+		if (!ClimbMotion.RecoilBreaksGrip(kick * ClimbMotion.PhysicsTicksPerSecond, arm)) return;
+
+		hand.LoseSupport();
+		this.PlaySlip(lip, player.Pos.Dimension);
 	}
 
 	private static void CheckFallDamage(EntityPlayer __instance, [HarmonyArgument(0)] DamageSource source, ref bool __result) {

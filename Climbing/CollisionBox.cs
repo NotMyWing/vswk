@@ -4,12 +4,24 @@ using Vintagestory.GameContent;
 
 namespace VintageKnuckle;
 
-internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, Cuboidf Part, bool SelectionOnly = false) {
+internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, Cuboidf Part,
+	bool SelectionOnly = false, bool GrippableSurface = false) {
 	public const double ContactTolerance = 0.0001;
-	public bool GrippableSurface => this.Block.Climbable || this.Block.Class == "BlockToolRack" || this.Block.BlockMaterial == EnumBlockMaterial.Leaves;
-	public bool CanGripUnderside => (!this.SelectionOnly || CollisionBox.UsesSelectionBox(this.Block)) && !this.Block.SideSolid[BlockFacing.DOWN.Index] &&
-		(this.Part.X1 > CollisionBox.ContactTolerance || this.Part.Y1 > CollisionBox.ContactTolerance || this.Part.Z1 > CollisionBox.ContactTolerance ||
-		 this.Part.X2 < 1 - CollisionBox.ContactTolerance || this.Part.Y2 < 1 - CollisionBox.ContactTolerance || this.Part.Z2 < 1 - CollisionBox.ContactTolerance);
+	public bool CanGripUnderside {
+		get {
+			if (this.Block is BlockBookshelf or BlockClutterBookshelf) return false;
+			if (this.SelectionOnly && !CollisionBox.UsesSelectionBox(this.Block)) return false;
+			if (this.Block.SideSolid[BlockFacing.DOWN.Index]) return false;
+
+			const double min = CollisionBox.ContactTolerance, max = 1 - min;
+			return this.Part.X1 > min ||
+			       this.Part.Y1 > min ||
+			       this.Part.Z1 > min ||
+			       this.Part.X2 < max ||
+			       this.Part.Y2 < max ||
+			       this.Part.Z2 < max;
+		}
+	}
 	public double X1 => this.X + (double)this.Part.X1;
 	public double X2 => this.X + (double)this.Part.X2;
 	public double Y1 => this.Y + (double)this.Part.Y1;
@@ -17,7 +29,28 @@ internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, C
 	public double Z1 => this.Z + (double)this.Part.Z1;
 	public double Z2 => this.Z + (double)this.Part.Z2;
 
-	private static bool UsesSelectionBox(Block block) => block.Class is "BlockOilLamp" or "BlockTorch" or "BlockTorchHolder" or "BlockToolRack";
+	private static bool UsesSelectionBox(Block block) => block.Class is
+		"BlockOilLamp"     or
+		"BlockTorch"       or
+		"BlockTorchHolder" or
+		"BlockToolRack";
+
+	public static bool CanGripSurface(Block block, BlockPos pos) {
+		if (block.Climbable || block.Class == "BlockToolRack" || block.BlockMaterial == EnumBlockMaterial.Leaves) return true;
+		if (block is not BlockClutter clutter) return false;
+
+		return clutter.GetBEBehavior<BEBehaviorShapeFromAttributes>(pos)?.Type is
+			"chains/chain-ceiling"        or
+			"chains/chain-section"        or
+			"chains/chain-end1"           or
+			"chains/chain-end2"           or
+			"chains/chain-double-section" or
+			"chains/chain-double-end1"    or
+			"chains/chain-double-end2"    or
+			"chains/chain-ceiling-hook"   or
+			"chains/chain-end-hook"       or
+			"chains/hook-ceiling";
+	}
 
 	public static Cuboidf[]? Parts(Block block, IBlockAccessor world, BlockPos pos, out bool selectionOnly) {
 		if (block is BlockSnowLayer) {
@@ -33,13 +66,16 @@ internal readonly record struct CollisionBox(int X, int Y, int Z, Block Block, C
 	public bool EdgeAt(BlockFacing face, Vec3d point, out BlockEdge edge) {
 		bool underside = Math.Abs(this.Y1 - point.Y) < Math.Abs(this.Y2 - point.Y);
 		edge = new BlockEdge(this, face, underside);
-		if (underside && !this.CanGripUnderside) return false;
+		if (this.Part is BookshelfShape.Panel || underside && !this.CanGripUnderside) return false;
 
 		double along = face.Normali.X == 0 ? point.X : point.Z;
 		var (x, z) = edge.PointAt(along);
 		const double tolerance = CollisionBox.ContactTolerance;
-		return Math.Abs(x - point.X) <= tolerance && Math.Abs(z - point.Z) <= tolerance &&
-			Math.Abs(edge.Height - point.Y) <= tolerance && along >= edge.Span.Min - tolerance && along <= edge.Span.Max + tolerance;
+		return Math.Abs(x - point.X) <= tolerance           &&
+		       Math.Abs(z - point.Z) <= tolerance           &&
+		       Math.Abs(edge.Height - point.Y) <= tolerance &&
+		       along >= edge.Span.Min - tolerance           &&
+		       along <= edge.Span.Max + tolerance;
 	}
 
 	public bool HitsUnderside(Vec3d eye, Vec3d end) {

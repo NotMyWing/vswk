@@ -198,8 +198,8 @@ internal static class GripSweep {
 				Math.Min(max.Z, Math.Max(ray.Eye.Z, end.Z) + pad));
 			LedgeFinder.CollectBoxes(player.World.BlockAccessor, player.Pos.Dimension, min, max, search, this.boxes);
 			foreach (var box in this.boxes) {
-				if (box.Y2 < floor - GripSweep.Roundoff) continue;
-				if (box.Block is BlockSupportBeam || box.Block.BlockMaterial is EnumBlockMaterial.Ice or EnumBlockMaterial.Snow) continue;
+				if (box.Block is BlockSupportBeam || box.Part is BookshelfShape.Panel) continue;
+				if (box.Y2 < floor - GripSweep.Roundoff || box.Block.BlockMaterial is EnumBlockMaterial.Ice or EnumBlockMaterial.Snow) continue;
 				if (box.GrippableSurface) this.surfaces.Add(box);
 				foreach (var face in BlockFacing.HORIZONTALS) {
 					Add(new BlockEdge(box, face, underside: false), null);

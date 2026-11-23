@@ -49,7 +49,7 @@ internal static class LedgeFinder {
 		int blockCount = specialOnly ? 0 : boxes.Count;
 		for (int i = 0; i < blockCount; i++) {
 			var box = boxes[i];
-			if (box.Block is BlockSupportBeam) continue;
+			if (box.Block is BlockSupportBeam || box.Part is BookshelfShape.Panel) continue;
 			if (box.Y2 < feet.Y - 0.05 || box.Block.BlockMaterial is EnumBlockMaterial.Ice or EnumBlockMaterial.Snow) continue;
 
 			var surface = SurfaceGrip.Find(player, box, eye, end, boxes);
@@ -207,12 +207,14 @@ internal static class LedgeFinder {
 		double longest = Math.Max(Math.Abs(delta.X), Math.Max(Math.Abs(delta.Y), Math.Abs(delta.Z)));
 		int pieces = Math.Max(1, (int)Math.Ceiling(longest / 4));
 		var from = start;
+		var boxes = new List<CollisionBox>();
 		for (int i = 1; i <= pieces; i++) {
 			double t = (double)i / pieces;
 			var to = i == pieces ? end : start.AddCopy(delta.X * t, delta.Y * t, delta.Z * t);
 			var low = new Vec3d(Math.Min(from.X, to.X) + body.X1, Math.Min(from.Y, to.Y) + body.Y1, Math.Min(from.Z, to.Z) + body.Z1);
 			var high = new Vec3d(Math.Max(from.X, to.X) + body.X2, Math.Max(from.Y, to.Y) + body.Y2, Math.Max(from.Z, to.Z) + body.Z2);
-			foreach (var box in LedgeFinder.FindGripBoxes(player.World.BlockAccessor, player.Pos.Dimension, low, high)) {
+			LedgeFinder.CollectBoxes(player.World.BlockAccessor, player.Pos.Dimension, low, high, null, boxes, body: true);
+			foreach (var box in boxes) {
 				if (box.BlocksBody(from, to, body)) return true;
 			}
 			from = to;
@@ -220,7 +222,7 @@ internal static class LedgeFinder {
 		return false;
 	}
 
-	internal static void CollectBoxes(IBlockAccessor world, int dimension, Vec3d eye, Vec3d end, GripSearch? search, List<CollisionBox> boxes) {
+	internal static void CollectBoxes(IBlockAccessor world, int dimension, Vec3d eye, Vec3d end, GripSearch? search, List<CollisionBox> boxes, bool body = false) {
 		boxes.Clear();
 		var pos = search == null ? new BlockPos(dimension) : null;
 
@@ -231,14 +233,13 @@ internal static class LedgeFinder {
 		for (int y = (int)Math.Floor(minY) - 1; y <= (int)Math.Floor(maxY) + 1; y++)
 		for (int z = (int)Math.Floor(minZ) - 1; z <= (int)Math.Floor(maxZ) + 1; z++)
 		for (int x = (int)Math.Floor(minX) - 1; x <= (int)Math.Floor(maxX) + 1; x++) {
-			var shape = search != null ? search.Read(x, y, z) : GripSearch.Read(world, pos!.Set(x, y, z));
-			var (block, parts, selectionOnly) = shape;
-			if (parts == null) continue;
+			var shape = search != null ? search.Read(x, y, z) : GripSearch.Read(world, pos!.Set(x, y, z), body: body);
+			if (shape.Parts == null) continue;
 
-			foreach (var part in parts) {
+			foreach (var part in shape.Parts) {
 				if (part.X1 >= part.X2 || part.Y1 >= part.Y2 || part.Z1 >= part.Z2) continue;
 
-				var box = new CollisionBox(x, y, z, block, part, selectionOnly);
+				var box = shape.BoxAt(x, y, z, part);
 				if (box.X2 >= minX && box.X1 <= maxX && box.Y2 >= minY && box.Y1 <= maxY &&
 					box.Z2 >= minZ && box.Z1 <= maxZ) {
 					boxes.Add(box);

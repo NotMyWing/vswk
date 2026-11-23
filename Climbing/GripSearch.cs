@@ -28,7 +28,9 @@ internal sealed partial class GripSearch : IDisposable {
 	public bool InRay;
 	private bool cacheShapes;
 
-	internal readonly record struct Shape(Block Block, Cuboidf[]? Parts, bool SelectionOnly);
+	internal readonly record struct Shape(Block Block, Cuboidf[]? Parts, bool SelectionOnly, bool GrippableSurface) {
+		public CollisionBox BoxAt(int x, int y, int z, Cuboidf part) => new(x, y, z, this.Block, part, this.SelectionOnly, this.GrippableSurface);
+	}
 
 	public static GripSearch? For(EntityPlayer player) => GripSearch.active?.Player == player ? GripSearch.active : null;
 
@@ -58,11 +60,14 @@ internal sealed partial class GripSearch : IDisposable {
 		return shape;
 	}
 
-	internal static Shape Read(IBlockAccessor world, BlockPos pos) {
-		var block = world.GetBlock(pos);
+	internal static Shape Read(IBlockAccessor world, BlockPos pos, Block? block = null, bool body = false) {
+		block ??= world.GetBlock(pos);
 		bool selection = false;
 		var parts = block.Id == 0 ? null : CollisionBox.Parts(block, world, pos, out selection);
-		return new Shape(block, parts, selection);
+		if (parts is not { Length: > 0 }) return new Shape(block, parts, selection, false);
+		if (!body && block is (BlockBookshelf or BlockClutterBookshelf) && BookshelfShape.At(block, world, pos) is { } boards)
+			return new Shape(block, boards, SelectionOnly: false, GrippableSurface: false);
+		return new Shape(block, parts, selection, CollisionBox.CanGripSurface(block, pos));
 	}
 
 	public List<BeamGrip.Beam> Beams(Vec3d eye, double range) {

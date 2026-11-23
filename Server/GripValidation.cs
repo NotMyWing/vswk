@@ -36,8 +36,8 @@ internal static class GripValidation {
 		if (block.Id != request.BlockId || block.Id == 0 || block is BlockSupportBeam ||
 			block.BlockMaterial is EnumBlockMaterial.Ice or EnumBlockMaterial.Snow) return null;
 
-		var parts = CollisionBox.Parts(block, world, pos, out bool selectionOnly);
-		if (parts == null) return null;
+		var shape = GripSearch.Read(world, pos, block);
+		if (shape.Parts == null) return null;
 
 		var face = BlockFacing.ALLFACES[request.Face];
 		var normal = face.Normali;
@@ -45,16 +45,16 @@ internal static class GripValidation {
 		const double tolerance = CollisionBox.ContactTolerance;
 		List<CollisionBox>? neighbors = null;
 		var spans = new List<(double Min, double Max)>();
-		foreach (var part in parts) {
+		foreach (var part in shape.Parts) {
 			if (part.X1 >= part.X2 || part.Y1 >= part.Y2 || part.Z1 >= part.Z2) continue;
-			var box = new CollisionBox(pos.X, pos.Y, pos.Z, block, part, selectionOnly);
+			var box = shape.BoxAt(pos.X, pos.Y, pos.Z, part);
 			bool onSurface = box.GrippableSurface && box.OnSurface(target, tolerance);
 			bool onEdge = box.EdgeAt(face, target, out var edge);
 			if (!onSurface && !onEdge) continue;
 
 			waitForPosition = true;
 			neighbors ??= LedgeFinder.FindGripBoxes(world, pos.dimension, eye, target);
-			var surface = !onSurface ? null : selectionOnly ? SurfaceGrip.Contact(player, box, eye, target, neighbors) :
+			var surface = !onSurface ? null : box.SelectionOnly ? SurfaceGrip.Contact(player, box, eye, target, neighbors) :
 				SurfaceGrip.Find(player, box, eye, target, neighbors);
 			if (surface != null &&
 				target.SquareDistanceTo(surface.HitX, surface.Top, surface.HitZ) <= tolerance * tolerance) {
@@ -73,7 +73,10 @@ internal static class GripValidation {
 				if (along < span.Min - tolerance || along > span.Max + tolerance) continue;
 				var (x, z) = edge.PointAt(Math.Clamp(along, span.Min, span.Max));
 				var lip = new Ledge(pos.X, pos.Y, pos.Z, pos.dimension, block.Id, normal.X, normal.Z, x, z) {
-					Top = edge.Height, EdgeMin = span.Min, EdgeMax = span.Max, CollapseDelay = BlockCollapse.Delay(player.World, block)
+					Top = edge.Height,
+					EdgeMin = span.Min,
+					EdgeMax = span.Max,
+					CollapseDelay = BlockCollapse.Delay(player.World, block)
 				};
 				if (LedgeFinder.EdgeBlocked(player, eye, edge, Math.Clamp(along, span.Min, span.Max))) continue;
 				waitForPosition = false;
