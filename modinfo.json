@@ -4,7 +4,7 @@
 	"name": "Vintage Knuckle",
 	"authors": ["NotMyWing"],
 	"description": "Catch a ledge, hang by either hand, and pull yourself up. Inspired by White Knuckle.",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"side": "Universal",
 	"requiredOnServer": true,
 	"requiredOnClient": true,

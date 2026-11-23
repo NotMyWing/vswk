@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 		<WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
-		<Version>0.2.1</Version>
+		<Version>0.2.2</Version>
 		<VintageStoryPath Condition="'$(VintageStoryPath)' == ''">$(VINTAGE_STORY)</VintageStoryPath>
 	</PropertyGroup>
 	<ItemGroup>
